@@ -1,0 +1,9 @@
+Matplotlib:
+- Might need to be rewritten
+- Ensure that the data is fully self-contained: i.e. not loaded from the local storage. Generate it or download it with an API if it doesn't exist already.
+- Ensure that we save the data
+
+Markdown:
+- Does not need to be rewritten
+- Ensure that all images are downloaded to the respective folders.
+- Order needs to be shuffled

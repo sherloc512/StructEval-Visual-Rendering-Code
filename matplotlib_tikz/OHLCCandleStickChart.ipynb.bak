@@ -1,0 +1,443 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "# Generate CandleStick Chart using TimeSeries data from LSEG Data Library for Python\n",
+    "\n",
+    "## Overview\n",
+    "\n",
+    "Basically, [LSEG Data Library for Python](https://developers.lseg.com/en/api-catalog/lseg-data-platform/lseg-data-library-for-python) provides the functionality to request a historical data so users can use the data for fundamental historical data analysis or technical analysis. They can also use the data to illustrate market movements. \n",
+    "\n",
+    "The Japanese candlestick chart and open-high-low-close chart (also OHLC) commonly used to illustrate movements in the price of a financial instrument over time. It's popular in finance and some strategies in technical analysis use them to make trading decisions, depending on the shape, color, and position of the candles. Although the Eikon user can use this kind of chart on Eikon Desktop, the API is a choice for a user who wants to use their own algorithm and calculation to generate a graph for technical analysis.\n",
+    "\n",
+    "This example demonstrates how to request the Time Series data from [LSEG Data Library for Python](https://developers.lseg.com/en/api-catalog/lseg-data-platform/lseg-data-library-for-python) and plot a simple graphs for basic technical analysis. And it also provide sample codes to generate an OHLC CandleStick chart and then plotting a Moving average to the graph. The user can use their own algorithm to make a decision based on the result from the graph and OHLC CandleStick chart. Note that this example does not cover the part to analyze the graph.\n",
+    "\n",
+    "## Packages Required\n",
+    "\n",
+    "User must [install LSEG Data Library for Python](https://developers.lseg.com/en/api-catalog/lseg-data-platform/lseg-data-library-for-python/quick-start#getting-started-with-python) and it requires __pandas__, __matplotlib__, __ipympl__, and __candlestick_ohlc__ from __mplfinance__ to process and visualize the stock data returned from the Eikon data API. We also use a method __histplot__ from __seaborn__ package to plot a histogram to see a distribution of the price.\n",
+    "\n",
+    "```python\n",
+    "import lseg.data as ld\n",
+    "from lseg.data.errors import LDError\n",
+    "import matplotlib.pyplot as plt\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "from matplotlib import dates\n",
+    "from mplfinance.original_flavor import candlestick_ohlc\n",
+    "from datetime import datetime\n",
+    "from pandas.plotting import register_matplotlib_converters\n",
+    "import seaborn as sns\n",
+    "from matplotlib.dates import DateFormatter, WeekdayLocator,DayLocator, MONDAY\n",
+    "```\n",
+    "\n",
+    "\n",
+    "## Retrieve a Time Series data using LSEG Data Library for Python\n",
+    "\n",
+    "To use LSEG Data Library for Python, users have to start desktop applications (Eikon or LSEG Workspace) and they must install the LSEG Data Library for Python and then generate AppID at the first step. Please find the following [quick start guide](https://developers.lseg.com/en/api-catalog/lseg-data-platform/lseg-data-library-for-python/quick-start) to install the LSEG Data Library for Python. The examples are available on [GitHub](https://github.com/LSEG-API-Samples/Example.DataLibrary.Python/tree/lseg-data-examples).\n",
+    "\n",
+    "To request a TimeSeries data, a developer can use the [get_history](https://github.com/LSEG-API-Samples/Example.DataLibrary.Python/blob/lseg-data-examples/Examples/1-Access/EX-1.01.02-GetHistory.ipynb) method.\n",
+    "Typically, user can specify RIC name, a period of times/interval and a field list such as OPEN_PRC, HIGH_1, LOW_1 and TRDPRC_1 price when requesting the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "import lseg.data as ld\n",
+    "from lseg.data.errors import LDError\n",
+    "import matplotlib.pyplot as plt\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "from matplotlib import dates\n",
+    "from mplfinance.original_flavor import candlestick_ohlc\n",
+    "from datetime import datetime\n",
+    "from pandas.plotting import register_matplotlib_converters\n",
+    "register_matplotlib_converters()\n",
+    "%matplotlib inline\n",
+    "\n",
+    "try:    \n",
+    "    ld.open_session(app_key = '<AppKey')\n",
+    "    itemName=\"MSFT.O\"\n",
+    "    dateStart=\"2020-01-01\"\n",
+    "    dateEnd=datetime.now()\n",
+    "\n",
+    "    # request time series data with adjusted close price\n",
+    "    df_adjustOHLC = ld.get_history(\n",
+    "        universe=['MSFT.O'],\n",
+    "        fields = ['OPEN_PRC','HIGH_1','LOW_1','TRDPRC_1','ACVOL_UNS'],\n",
+    "        adjustments=['exchangeCorrection','manualCorrection','CCH','CRE','RPO','RTS'],\n",
+    "        start=dateStart,\n",
+    "        end=dateEnd)\n",
+    "\n",
+    "except LDError as ex:\n",
+    "    print('LSEG Data Error')\n",
+    "    print(ex)\n",
+    "except Exception as ex:\n",
+    "    print(ex)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "From the snippet codes provided above, we use method [get_history](https://github.com/LSEG-API-Samples/Example.DataLibrary.Python/blob/lseg-data-examples/Examples/1-Access/EX-1.01.02-GetHistory.ipynb) to get daily close price and we set Corax to 'adjusted' to get adjusted close price. \n",
+    "\n",
+    "To run this example you have to change <AppKey>, __itemName__, __datestart__ and __dateEnd__ to a period of time you want to retrieve. I set a dateStart since 2020 because I can shorten a period of time later from the dataframe. \n",
+    "    \n",
+    "Below is sample data returned by the method. We call dataframe.head and dataframe.tail to print the data from the dataframe."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "print('Row count=',len(df_adjustOHLC.index))\n",
+    "print(df_adjustOHLC.head(10))\n",
+    "print(df_adjustOHLC.tail(10))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "# Visualizing Stock Data\n",
+    "\n",
+    "## Plot a simple Daily Closing Price line graph\n",
+    "\n",
+    "We can create a simple line graph to compare open and close price using the following codes. You can change size of figure.figsize to adjust chart size."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "%matplotlib ipympl\n",
+    "\n",
+    "fig = plt.figure(figsize=(9,8),dpi=100)\n",
+    "ax = plt.subplot2grid((3,3), (0, 0), rowspan=3, colspan=3)\n",
+    "titlename='Graph for '+itemName\n",
+    "ax.set_title(titlename)\n",
+    "ax.set_xlabel('Year')\n",
+    "ax.set_ylabel('Adj Closing Price')\n",
+    "ax.grid(True)\n",
+    "ax.plot(df_adjustOHLC.index, df_adjustOHLC['TRDPRC_1']) \n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Plot the Daily Closing Price and Stock Volume\n",
+    "\n",
+    "It may useful to review a trading volume to spot for spikes in trading. We can add a bar chart under the line graph for a daily close price as a subplot to indicate the volume. I will shorten a period of time to display data from 2022 instead. You can change it to any period of time you are interesting."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df=df_adjustOHLC[['TRDPRC_1','ACVOL_UNS']].loc['2022-01-01':datetime.now(),:]\n",
+    "\n",
+    "#top graph for daily close price and bottom one is bar graph for stock volumen.\n",
+    "\n",
+    "#Set figure size\n",
+    "fig = plt.figure(figsize=(9,8),dpi=100)\n",
+    "\n",
+    "# Set subplot size to 4 row x4 col top graph start from 0,0 to row 3 and last low is for volume\n",
+    "top = plt.subplot2grid((4,4), (0, 0), rowspan=3, colspan=4)\n",
+    "top.plot(df.index, df['TRDPRC_1'], label='Close')\n",
+    "top.grid(True)\n",
+    "titletxt='Close price for '+itemName\n",
+    "top.set_title(titletxt)\n",
+    "top.axes.get_xaxis().set_visible(False)\n",
+    "#set legend to upper left(2)\n",
+    "plt.legend(loc=2)\n",
+    "\n",
+    "\n",
+    "#bottom graph(volume) start from row 3, col 0 cover size for 1 last row with 4 column.\n",
+    "#set sharex to top so we can zoom or pan both graph\n",
+    "bottom = plt.subplot2grid((4,4), (3,0), rowspan=1, colspan=4,sharex=top)\n",
+    "bottom.grid(True)\n",
+    "bottom.bar(df.index, df['ACVOL_UNS']) \n",
+    "plt.title('Trade Volume')\n",
+    "\n",
+    "plt.subplots_adjust(hspace=0.75)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Generate a Histogram of the Daily Closing Price\n",
+    "\n",
+    "A histogram might be useful to help review daily closing prices over time to see the spread or volatility, and also the type of distribution. We use the seaborn histplot method to plot the graph."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import seaborn as sns\n",
+    "plt.figure(figsize=(9,8),dpi=100)\n",
+    "df=df_adjustOHLC[['TRDPRC_1','ACVOL_UNS']].loc['2022-01-01':datetime.now(),:]\n",
+    "graph=sns.histplot(df['TRDPRC_1'].dropna(), \n",
+    "                   bins=50, \n",
+    "                   color='green',\n",
+    "                   kde=True,\n",
+    "                   stat=\"density\", \n",
+    "                   kde_kws=dict(cut=3))\n",
+    "graph.set(title=itemName)\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "## Plot the CandleStick OHLC Chart\n",
+    "\n",
+    "Next step we will generate a CandleStick using method candlestick_ohlc from mplfinance library. Please note that from details in this [link](https://matplotlib.org/api/finance_api.html), module matplotlib.finance is deprecated in 2.0 and has been moved to a module called mpl_finance. It's still working when we have matplotlib version 2.1.2 but this may stop working in any future releases, however, you still be able to use mpl_finance module to use this feature. Note that mpl_finance is no longer maintained.  \n",
+    "\n",
+    "To generate the graph we need to pass a dataframe column which contain Open, High, Low and Close price to the method. And there are some additional steps to configuring a tick locating and formatting before plotting the graph. Hence we will add these steps to a new function instead so it can do formatting and generating a graph and then we can re-use this function to plot a moving average later. Note that below function created based on the [example codes](https://matplotlib.org/examples/pylab_examples/finance_demo.html) provided on [Matplotlib page](https://matplotlib.org).\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "from matplotlib.dates import DateFormatter, WeekdayLocator,DayLocator, MONDAY\n",
+    "from mplfinance.original_flavor import candlestick_ohlc\n",
+    " \n",
+    "def pandas_candlestick_ohlc(dat, otherseries = None,item_name=None):\n",
+    "    \n",
+    "    mondays = WeekdayLocator(MONDAY)    # major ticks on the mondays\n",
+    "    alldays = DayLocator()              # minor ticks on the days\n",
+    "    weekFormatter = DateFormatter('%b %d')  # e.g., Jan 12\n",
+    "    dayFormatter = DateFormatter('%d')      # e.g., 12\n",
+    "    \n",
+    "    plotdat = dat.loc[:,[\"OPEN_PRC\", \"HIGH_1\", \"LOW_1\", \"TRDPRC_1\"]]\n",
+    "    stick=1\n",
+    "    \n",
+    "    #Set figure size\n",
+    "    fig = plt.figure(figsize=(10,8),dpi=100)\n",
+    "    top=plt.subplot2grid((5,4), (0, 0), rowspan=4, colspan=4)  \n",
+    "    fig.subplots_adjust(bottom=0.2)\n",
+    "    mondays.MAXTICKS = 3000\n",
+    "    alldays.MAXTICKS = 3000\n",
+    "    top.xaxis.set_major_locator(mondays)\n",
+    "    top.xaxis.set_minor_locator(alldays)\n",
+    "  \n",
+    "    titletxt='CandleStick Chart for '+itemName\n",
+    "    top.set_title(titletxt)\n",
+    "\n",
+    "    \n",
+    "    # Create the candelstick chart\n",
+    "    candlestick_ohlc(top, list(zip(list(dates.date2num(plotdat.index.tolist())), plotdat[\"OPEN_PRC\"].tolist(), plotdat[\"HIGH_1\"].tolist(),\n",
+    "                      plotdat[\"LOW_1\"].tolist(), plotdat[\"TRDPRC_1\"].tolist())),\n",
+    "                      colorup = \"green\", colordown = \"red\", width = stick * .4)\n",
+    " \n",
+    "    # Plot other series (such as moving averages) as lines\n",
+    "    if otherseries != None:\n",
+    "        if type(otherseries) != list:\n",
+    "            otherseries = [otherseries]\n",
+    "        dat.loc[:,otherseries].plot(ax = top, lw = 1.3, grid = True)\n",
+    " \n",
+    "    #top.xaxis_date()\n",
+    "    top.autoscale_view()\n",
+    "    top.grid(True)\n",
+    "    top.axes.get_xaxis().set_visible(False)\n",
+    "    \n",
+    "    bottom = plt.subplot2grid((5,4), (4,0), rowspan=1, colspan=4,sharex=top)\n",
+    "    bottom.bar(dat.index, dat['ACVOL_UNS'])\n",
+    "    bottom.grid(True)\n",
+    "    plt.title('Trade Volume')\n",
+    "    plt.subplots_adjust(hspace=0.75)\n",
+    "    plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')\n",
+    "    plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "We need to call pandas_candlestick_ohlc and pass a dataframe return from ek.get_timeseries to generate a CandleStick chart.\n",
+    "As we add __%mathplotlib ipympl__ to the codes, it will show toolbar under the chart so you can zoom and pan the CandleStick chart. And you can also change start and end date in df_adjustOHLC.loc[] to see a graph in difference peroid of times."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "%matplotlib ipympl\n",
+    "#pandas_candlestick_ohlc(df_adjustOHLC)\n",
+    "df=df_adjustOHLC.loc['2022-01-01':datetime.now(),:]\n",
+    "pandas_candlestick_ohlc(df,item_name=itemName)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Change the codes to plot CandleStick Chart for a shorter peroid of times."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%matplotlib ipympl\n",
+    "#pandas_candlestick_ohlc(df_adjustOHLC)\n",
+    "df=df_adjustOHLC.loc['2024-08-01':datetime.now(),:]\n",
+    "pandas_candlestick_ohlc(df,item_name=itemName)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "From a candlestick chart(zoom the graph), a green candlestick indicates a day where the closing price was higher than the open(Gain), while a red candlestick indicates a day where the open was higher than the close (Loss). The wicks indicate the high and the low, and the body the open and close (hue is used to determine which end of the body is open and which the close). You can change the color in pandas_candlestick_ohlc function we have created. And as I said previously, a user can use Candlestick charts for technical analysis and use them to make trading decisions, depending on the shape, color, and position of the candles. We will not cover a technical analysis in this example..\n",
+    "\n",
+    "## Add Simple Moving Average to the graph\n",
+    "\n",
+    "Lastly, we will add a moving average (MA) to the CandleStick chart. MA is a widely used indicator in technical analysis that helps smooth out price action by filtering out the “noise” from random short-term price fluctuations. It is a trend-following or lagging, indicator because it is based on past prices. The two basic and commonly used moving averages are the simple moving average (SMA), which is the simple average of a security over a defined number of time periods, and the exponential moving average (EMA), which gives greater weight to more recent prices. Note that this example will use only SMA. The most common applications of moving averages are to identify the trend direction and to determine support and resistance levels. After we get the CandleStick chart, it's time to calculate Moving averages and plot to the CandleSticks graph.\n",
+    "\n",
+    "Basically, pandas provides functionality for easily computing a simple moving averages. The following codes creating a 20-day moving average from adjusted close price from the data frame, and plotting it alongside the stock.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "\n",
+    "df_adjustOHLC[\"SMA20d\"] = np.round(df_adjustOHLC[\"TRDPRC_1\"].rolling(window = 20, center = False).mean(), 2)\n",
+    "df=df_adjustOHLC.loc['2022-01-01':datetime.now(),:]\n",
+    "pandas_candlestick_ohlc(df, otherseries = \"SMA20d\",item_name=itemName)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "Moving averages lag behind current price action because they are based on past prices; the longer the time period for the moving average, the greater the lag. Thus, a 200-day MA will have a much greater degree of lag than a 20-day MA because it contains prices for the past 200 days.\n",
+    "\n",
+    "The length of the moving average to use depends on the trading objectives, with shorter moving averages used for short-term trading and longer-term moving averages more suited for long-term investors. The 50-day and 200-day MAs are widely followed by investors and traders, with breaks above and below this moving average considered to be important trading signals.\n",
+    "\n",
+    "The following codes use to generated CandleStick chart with multiple periods of times for SMA(20-day,50-day,75-day, and 200-day)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "pycharm": {}
+   },
+   "outputs": [],
+   "source": [
+    "df_adjustOHLC[\"SMA50d\"] = np.round(df_adjustOHLC[\"TRDPRC_1\"].rolling(window=50, center = False).mean(), 2)\n",
+    "df_adjustOHLC[\"SMA75d\"] = np.round(df_adjustOHLC[\"TRDPRC_1\"].rolling(window=75, center = False).mean(), 2)\n",
+    "df_adjustOHLC[\"SMA200d\"] = np.round(df_adjustOHLC[\"TRDPRC_1\"].rolling(window=200, center = False).mean(), 2)\n",
+    "df=df_adjustOHLC.loc['2022-01-01':'2024-08-05',:]\n",
+    "pandas_candlestick_ohlc(df, otherseries = [\"SMA20d\",\"SMA50d\",\"SMA75d\",\"SMA200d\"],item_name=itemName)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "pycharm": {}
+   },
+   "source": [
+    "\n",
+    "There are other types of Moving Average that user can apply with the dataframe to calculate the average value. Many of python open-source package provide the method to calculate MA and [Ta-Lib](https://mrjbq7.github.io/ta-lib/) is one of the libraries which support the calculation and you may try it with the data from the LSEG Data Library for Python. However, we do not cover in this example.\n",
+    "\n",
+    "## Summary\n",
+    "\n",
+    "This example shows how to use the LSED Data Library for Python to retrieve Time Series data or daily close price and plot the data on various kind of graph.  It also demonstrates how to plot a Candle Stick chart with a moving average for finance technical analysis. User may add their own algorithm or calculation to support their requirement and may use an external library to calculate the moving average and plot to the chart. The graphs should be useful in terms of fundamental stock price technical analysis. The user can use the graphs/chart to identify trading opportunities in price trends and patterns seen on charts. \n",
+    "\n",
+    "## References\n",
+    "\n",
+    "* [LSEG Data Library for Python Quick Start Guide](https://developers.lseg.com/en/api-catalog/lseg-data-platform/lseg-data-library-for-python/quick-start)\n",
+    "* [LSEG Data Library for Python Examples](https://github.com/LSEG-API-Samples/Example.DataLibrary.Python/tree/lseg-data-examples)\n",
+    "* [Matplotlib Examples](https://matplotlib.org/examples/pylab_examples/finance_demo.html)\n",
+    "* [What Is a Moving Average Article.](https://www.investopedia.com/terms/m/movingaverage.asp)\n",
+    "* [Seaborn Tutorial](https://seaborn.pydata.org/tutorial/distributions.html)\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
